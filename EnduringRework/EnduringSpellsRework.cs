@@ -18,15 +18,6 @@ namespace EnduringRework;
 
 internal class EnduringSpellsRework
 {
-    internal static HashSet<BlueprintGuid> ForbidddenPermanentSpells =
-    [
-        new BlueprintGuid(new System.Guid("7c33de68880aa444bbb916271b653016")), //FirebellyBuff
-        new BlueprintGuid(new System.Guid("dd91a3c3df275984592edcadb8e90749")), //CallLightningBuff
-        new BlueprintGuid(new System.Guid("65ba3abcdc991004aaf32ca5ad7119ca")), //CallLightningStormBuff
-        new BlueprintGuid(new System.Guid("830804f1bc365e34bb4701b8fd622ad3")), //CaveFangsStalactitesBuff
-        new BlueprintGuid(new System.Guid("f6d1a5549172a0d428b4bbb0ed7a4071"))  //CaveFangsStalagmitesBuff
-    ];
-
     internal static void UpdateEnduringSpellsMythicAbility()
     {
         var enduringSpells = Utils.GetBlueprint<BlueprintFeature>("2f206e6d292bdfb4d981e99dcf08153f");
@@ -41,15 +32,14 @@ internal class EnduringSpellsRework
             }
         );
         enduringSpells.m_Description = Utils.CreateLocalizedString("AlterAsc.EnduringRework.EnduringSpellsDescription"
-            , "You've learned a way to prolong the effects of your beneficial spells.\r\n" +
-            "Benefit: Effects of your spells on your allies cast with shorter than 10 minutes last 10 minutes.\r\n" +
-            "Effects of yout spells on your allies that should last at least 10 minutes but shorter than 1 hour last 1 hour.\r\n" +
-            "Effects of your spells on your allies that should last at least an hour but shorter than 24 hours now last 24 hours.");
+            , "You've learned a way to prolong the effects of your beneficial spells and abilities.\r\n" +
+            "Benefit: Effects granted to your allies that should last shorter than 1 hour last 1 hour.\r\n" +
+            "Effects granted to your allies that should last at least an hour but shorter than 24 hours now last 24 hours.");
 
         var greaterEnduringSpells = Utils.GetBlueprint<BlueprintFeature>("13f9269b3b48ae94c896f0371ce5e23c");
         greaterEnduringSpells.m_Description = Utils.CreateLocalizedString("AlterAsc.EnduringRework.GreaterEnduringSpellsDescription"
-            , "You've mastered a way to prolong your beneficial spells.\r\n" +
-            "Benefit: Effects of your spells on your allies now last 24 hours.");
+            , "You've mastered a way to prolong your beneficial spells and abilities.\r\n" +
+            "Benefit: Effects granted to your allies now last at least 24 hours.");
     }
 }
 
@@ -72,26 +62,21 @@ public class EnduringSpellsRedone :
     public void HandleBuffDidAdded(Buff buff)
     {
         AbilityData ability = buff.Context.SourceAbilityContext?.Ability;
-        if (ability == null)
+        if (ability == null || !(buff.MaybeContext?.MaybeCaster == (UnitDescriptor)this.Owner) 
+            || buff.TimeLeft >= 24.Hours())
         {
             return;
         }
 
-        if (this.Owner.HasFact(Greater))
-        {
-            buff.SetEndTime(24.Hours() + buff.AttachTime);
-        }
-        else if (buff.TimeLeft >= 1.Hours())
-        {
-            buff.SetEndTime(24.Hours() + buff.AttachTime);
-        }
-        else if (buff.TimeLeft >= 10.Minutes())
+        if (buff.TimeLeft < 59.54.Minutes() && !this.Owner.HasFact(Greater)) 
+        // 1.Hours or 60.Minutes doesn't work for some reason if the duration is exactly 1 hour
+        // 59.54.Minutes is 1 round less.
         {
             buff.SetEndTime(1.Hours() + buff.AttachTime);
         }
         else
         {
-            buff.SetEndTime(10.Minutes() + buff.AttachTime);
+            buff.SetEndTime(24.Hours() + buff.AttachTime);
         }
     }
 
