@@ -42,9 +42,9 @@ internal class EnduringSpellsRework
         );
         enduringSpells.m_Description = Utils.CreateLocalizedString("AlterAsc.EnduringRework.EnduringSpellsDescription"
             , "You've learned a way to prolong the effects of your beneficial spells.\r\n" +
-            "Benefit: Effects of your spells on your allies cast with that should last longer than 1 minute but shorter than 10 minutes last 10 minutes.\r\n" +
-            "Effects that should last longer than 10 minutes but shorter than 1 hour last 1 hour.\r\n" +
-            "Effects of your spells on your allies that should last longer than an hour but shorter than 24 hours now last 24 hours.");
+            "Benefit: Effects of your spells on your allies cast with shorter than 10 minutes last 10 minutes.\r\n" +
+            "Effects of yout spells on your allies that should last at least 10 minutes but shorter than 1 hour last 1 hour.\r\n" +
+            "Effects of your spells on your allies that should last at least an hour but shorter than 24 hours now last 24 hours.");
 
         var greaterEnduringSpells = Utils.GetBlueprint<BlueprintFeature>("13f9269b3b48ae94c896f0371ce5e23c");
         greaterEnduringSpells.m_Description = Utils.CreateLocalizedString("AlterAsc.EnduringRework.GreaterEnduringSpellsDescription"
@@ -72,9 +72,7 @@ public class EnduringSpellsRedone :
     public void HandleBuffDidAdded(Buff buff)
     {
         AbilityData ability = buff.Context.SourceAbilityContext?.Ability;
-        if (ability == null || ability.SourceItem != null
-            || !(buff.MaybeContext?.MaybeCaster == (UnitDescriptor)this.Owner)
-           )
+        if (ability == null)
         {
             return;
         }
@@ -91,7 +89,7 @@ public class EnduringSpellsRedone :
         {
             buff.SetEndTime(1.Hours() + buff.AttachTime);
         }
-        else if (buff.TimeLeft >= 1.Minutes())
+        else
         {
             buff.SetEndTime(10.Minutes() + buff.AttachTime);
         }
