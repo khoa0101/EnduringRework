@@ -41,14 +41,15 @@ internal class EnduringSpellsRework
             }
         );
         enduringSpells.m_Description = Utils.CreateLocalizedString("AlterAsc.EnduringRework.EnduringSpellsDescription"
-            , "You've learned a way to prolong the effects of your beneficial {g|FeatureExtendSpell}extended{/g} spells.\r\n" +
-            "Benefit: Effects of your spells on your allies cast with {g|FeatureExtendSpell}extend{/g} metamagic applied that should last longer than 1 minute but shorter than 10 minutes last 10 minutes.\r\n" +
-            "Effects that should last longer than 10 minutes but shorter than 1 hour last 1 hour.");
+            , "You've learned a way to prolong the effects of your beneficial spells.\r\n" +
+            "Benefit: Effects of your spells on your allies cast with that should last longer than 1 minute but shorter than 10 minutes last 10 minutes.\r\n" +
+            "Effects that should last longer than 10 minutes but shorter than 1 hour last 1 hour.\r\n" +
+            "Effects of your spells on your allies that should last longer than an hour but shorter than 24 hours now last 24 hours.");
 
         var greaterEnduringSpells = Utils.GetBlueprint<BlueprintFeature>("13f9269b3b48ae94c896f0371ce5e23c");
         greaterEnduringSpells.m_Description = Utils.CreateLocalizedString("AlterAsc.EnduringRework.GreaterEnduringSpellsDescription"
-            , "You've mastered a way to prolong your beneficial {g|FeatureExtendSpell}extended{/g} spells.\r\n" +
-            "Benefit: In addition to existing benefits effects of your spells on your allies cast with {g|FeatureExtendSpell}extend{/g} metamagic that should last longer than an hour are permanent.");
+            , "You've mastered a way to prolong your beneficial spells.\r\n" +
+            "Benefit: Effects of your spells on your allies now last 24 hours.");
     }
 }
 
@@ -71,25 +72,26 @@ public class EnduringSpellsRedone :
     public void HandleBuffDidAdded(Buff buff)
     {
         AbilityData ability = buff.Context.SourceAbilityContext?.Ability;
-        if (ability == null || ability.Spellbook == null || ability.SourceItem != null
+        if (ability == null || ability.SourceItem != null
             || !(buff.MaybeContext?.MaybeCaster == (UnitDescriptor)this.Owner)
-            || !ability.HasMetamagic(Metamagic.Extend)
            )
         {
             return;
         }
-        if (buff.TimeLeft > 60.Minutes())
+
+        if (this.Owner.HasFact(Greater))
         {
-            if (this.Owner.HasFact(Greater) && !EnduringSpellsRework.ForbidddenPermanentSpells.Contains(buff.Blueprint.AssetGuid))
-            {
-                buff.MakePermanent();
-            }
+            buff.SetEndTime(24.Hours() + buff.AttachTime);
         }
-        else if (buff.TimeLeft > 10.Minutes())
+        else if (buff.TimeLeft >= 1.Hours())
+        {
+            buff.SetEndTime(24.Hours() + buff.AttachTime);
+        }
+        else if (buff.TimeLeft >= 10.Minutes())
         {
             buff.SetEndTime(1.Hours() + buff.AttachTime);
         }
-        else if (buff.TimeLeft > 1.Minutes())
+        else if (buff.TimeLeft >= 1.Minutes())
         {
             buff.SetEndTime(10.Minutes() + buff.AttachTime);
         }
@@ -115,14 +117,15 @@ static class ItemEntity_AddEnchantment_EnduringSpells_Patch
     private static Rounds Ten_Minutes = DurationRate.Minutes.ToRounds() * 10;
     private static Rounds One_Minute = DurationRate.Minutes.ToRounds();
 
+    private static Rounds One_Day = DurationRate.Hours.ToRounds() * 24;
+
     [HarmonyPrefix]
     static bool Prefix(MechanicsContext parentContext, ref Rounds? duration)
     {
         if (parentContext != null && parentContext.MaybeOwner != null && duration != null)
         {
             var abilityData = parentContext.SourceAbilityContext?.Ability;
-            if (abilityData == null || abilityData.Spellbook == null
-                || abilityData.SourceItem != null || !abilityData.HasMetamagic(Metamagic.Extend))
+            if (abilityData == null || abilityData.SourceItem != null)
             {
                 return true;
             }
@@ -131,13 +134,18 @@ static class ItemEntity_AddEnchantment_EnduringSpells_Patch
             {
                 if (owner.Descriptor.HasFact(EnduringSpellsGreater))
                 {
-                    duration = null;
+                    duration = One_Day;
                 }
             }
             else
             {
                 if (owner.Descriptor.HasFact(EnduringSpells))
                 {
+                    if (duration > One_Hour)
+                    {
+                        duration = One_Day;
+                    }
+                    else
                     if (duration > Ten_Minutes)
                     {
                         duration = One_Hour;
